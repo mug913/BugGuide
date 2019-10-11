@@ -15,17 +15,17 @@ class Bugguide::CLI
     puts "1: Get Info"
     puts "2: List lower branches"
     puts "3: Return up tree"
-    puts "4: Quit"
-    until input == "4" || input == "q" 
+    puts "Q: Quit"
+    until input == "Q" || input == "q" 
       input = gets.strip
       case input
         when "1"
           getinfo
-        when "n","N"
+        when "q","Q"
           puts "Goodbye."
         else 
-          puts "Scrape? (y/n)"
-      end
+          puts "Invalid input."
+        end
     end        
     #binding.pry
   end
@@ -41,6 +41,7 @@ class Bugguide::CLI
   end
   
   def getinfo
+    min = 0
     info_page = []
     info_url = @@url.chomp("/bgpage")
     scrape_page(info_url)
@@ -48,12 +49,44 @@ class Bugguide::CLI
       info_page << section
     end
     puts "Pick a category:"
+    puts "Press 'X' to return."
     info_page.each_with_index do |section, index|
-      if section.css(".bgpage-section-heading").text != /\s/
+      if !(section.css(".bgpage-section-heading").text == " ")
         puts "#{index}: #{section.css(".bgpage-section-heading").text}"
-        input = gets.strip
+        #binding.pry
       end 
     end 
+    input = gets.strip
     binding.pry
+      if input.to_i < info_page.length
+        if info_page[input.to_i].css(".bgpage-taxon").text 
+          taxon_title = info_page[input.to_i].css(".bgpage-taxon-title")
+          taxon_desc = info_page[input.to_i].css(".bgpage-taxon-desc")
+          i = 0 
+          while i < taxon_title.length
+            puts "#{taxon_title.children[i].text} : #{taxon_desc.children[i].text}"
+            i += 1
+          end
+        end
+        if !info_page[input.to_i].css(".bgpage-text").text != ""
+          puts "#{info_page[input.to_i].css(".bgpage-text").text}"
+        end
+        if info_page[input.to_i].css(".bgpage-bullet").text 
+          bullets = info_page[input.to_i].css(".bgpage-bullet").text.split(/\r/)
+          bullets.each do |bullet|
+            puts" * #{bullet}"
+          end
+        end
+        getinfo
+      elsif input == 'x' || input == 'X'
+      binding.pry
+        list_options
+      else
+        puts "Invalid input. Press 'X' to return."
+        getinfo
+      end
+    #binding.pry
   end
+  
+  
 end
