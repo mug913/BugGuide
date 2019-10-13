@@ -1,6 +1,4 @@
 class Bugguide::Scraper
-  
-
 
   def self.scrape_page(url)
     @doc = Nokogiri::HTML(open(url))
