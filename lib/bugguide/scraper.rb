@@ -2,22 +2,21 @@ class Bugguide::Scraper
 
 @@all = []
 
-attr_accessor :data_doc, :url, :info_page, :level
+attr_accessor :data_doc, :url, :info_page
 
-  def initialize(url, level = 0)
+  def initialize(url)
     @url = url
     @data_doc = Nokogiri::HTML(open(url))
     info_url = url.chomp("/bgpage")
     @info_page = Nokogiri::HTML(open(info_url))
-    @level = level
     if !@@all.any?{|cell| cell[self.url]}
       @@all << {self.url => self}
     end
   end
 
-  def self.find_or_create_page(url, level = 0)
+  def self.find_or_create_page(url)
       if !@@all.any?{|cell| cell[url]}
-        Bugguide::Scraper.new(url,level)
+        Bugguide::Scraper.new(url)
       else
         found = @@all.find{|cell| cell[url]}
         found[url]
@@ -88,7 +87,6 @@ attr_accessor :data_doc, :url, :info_page, :level
      def travel_map_down
        paths = []
        pages = []
-       current_level = self.level
        scrape = self.data_doc
        pages << self.url
        scrape.css(".pager a").each do |node|
@@ -97,7 +95,7 @@ attr_accessor :data_doc, :url, :info_page, :level
          end
        end
        pages.each do |page|
-         option = Bugguide::Scraper.find_or_create_page(page, current_level += 1)
+         option = Bugguide::Scraper.find_or_create_page(page)
          option.data_doc.css(".node-title a").each do |node|
          paths << {
            :page_title => node.text,
@@ -105,27 +103,42 @@ attr_accessor :data_doc, :url, :info_page, :level
            }
          end
        end
-       travel_down(paths)
+       travel(paths)
       end
 
       def travel_map_up
-        if self.level == 0
-          puts "You are at the top level."
-        else
-          @level -= 1
-          @url = @history[@level]
-          @history.pop(1)
-        end
-        list_options
+          paths = []
+          pages = []
+          scrape = self.data_doc
+          pages << self.url
+          binding.pry
+          scrape.css(".pager a").each do |node|
+            if !pages.include?(node.attribute('href').value)
+              pages << node.attribute('href').value
+            end
+          end
+          pages.each do |page|
+            option = Bugguide::Scraper.find_or_create_page(page)
+            option.data_doc.css(".node-title a").each do |node|
+            paths << {
+              :page_title => node.text,
+              :page_url => node.attribute('href').value
+              }
+            end
+            binding.pry
+          end
+          travel(paths)
       end
 
       def travel(paths)
-        if paths.length = 0
+        if paths.length == 0
           puts "You have reached the bottom level."
+          travel(paths)
         else
           paths.each_with_index do |path, index|
-            if ((self.level == 0) && (index < 4)) || (self.level > 0)
+            if ((self == @@all[0][self.url]) && (index < 4)) || (self != @@all[0][self.url])
               puts " #{index+1} : #{path[:page_title]}"
+        #      binding.pry
             end
           end
           input = gets.strip
@@ -136,7 +149,7 @@ attr_accessor :data_doc, :url, :info_page, :level
             Bugguide::CLI.return(paths[choice][:page_url]).list_options
           else
             puts "Invalid input. Press 'X' to return to the main menu."
-            travel_down(paths)
+            travel(paths)
           end
         end
       end

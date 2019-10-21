@@ -32,9 +32,9 @@ attr_accessor :url, :page
         page.getinfo
         list_options
       when '2'
-        page.travel_map
+        page.travel_map_down
       when '3'
-        page.travel_up
+        page.travel_map_up
       when "q","Q"
         puts "Goodbye."
         exit!
