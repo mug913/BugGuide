@@ -1,6 +1,7 @@
 class Bugguide::Scraper
 
 @@all = []
+@@current_level = 0
 
 attr_accessor :data_doc, :url, :info_page
 
@@ -9,14 +10,10 @@ attr_accessor :data_doc, :url, :info_page
     @data_doc = Nokogiri::HTML(open(url))
     info_url = url.chomp("/bgpage")
     @info_page = Nokogiri::HTML(open(info_url))
-    @@current_doc = self
+    @level = @@current_level
     if !@@all.include?(self.url)
       @@all << self
     end
-  end
-
-  def self.current_doc
-    @@current_doc
   end
 
   def self.scraped_docs
@@ -81,14 +78,14 @@ attr_accessor :data_doc, :url, :info_page
      def travel_map
        paths = []
        pages = []
-       scrape = Bugguide::Scraper.current_doc.data_doc
-       pages << current_doc.url
+       scrape = self.data_doc
+       pages << self.url
        scrape.css(".pager a").each do |node|
          pages << node.attribute('href').value
        end
        pages.uniq.each do |page|
-         option = Bugguide::Scraper.scrape_page(page)
-         option.css(".node-title a").each do |node|
+         option = Bugguide::Scraper.new(page)
+         option.data_doc.css(".node-title a").each do |node|
          paths << {
            :page_title => node.text,
            :page_url => node.attribute('href').value
@@ -96,6 +93,27 @@ attr_accessor :data_doc, :url, :info_page
          end
        end
        travel_down(paths)
+      end
+
+      def travel_down(paths)
+        paths.each_with_index do |path, index|
+          if ((@level == 0) && (index < 4)) || (@level > 0)
+            puts " #{index+1} : #{path[:page_title]}"
+          end
+        end
+        input = gets.strip
+        if input == 'x' || input == 'X'
+          list_options
+        elsif input.to_i > 0 && input.to_i <= paths.length
+          choice = input.to_i - 1
+          @@current_level += 1
+          @@history << self.url
+          url = paths[choice][:page_url]
+          list_options
+        else
+          puts "Invalid input. Press 'X' to return to the main menu."
+          travel_down(paths)
+        end
       end
 
 end
