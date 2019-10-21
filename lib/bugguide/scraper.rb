@@ -1,6 +1,7 @@
 class Bugguide::Scraper
 
 @@all = []
+@@root = "https://bugguide.net/node/view/3/bgpage"
 
 attr_accessor :data_doc, :url, :info_page
 
@@ -9,18 +10,27 @@ attr_accessor :data_doc, :url, :info_page
     @data_doc = Nokogiri::HTML(open(url))
     info_url = url.chomp("/bgpage")
     @info_page = Nokogiri::HTML(open(info_url))
-    @@current_doc = self
-    if !@@all.include?(self.url)
-      @@all << self
+    if !@@all.any?{|cell| cell[self.url]}
+      @@all << {self.url => self}
     end
   end
 
-  def self.current_doc
-    @@current_doc
-  end
+  def self.find_or_create_page(url)
+      if !@@all.any?{|cell| cell[url]}
+        Bugguide::Scraper.new(url)
+      else
+        found = @@all.find{|cell| cell[url]}
+        found[url]
+      end
+    end
 
   def self.scraped_docs
-    @all
+    @@all
+  end
+
+  def current_level
+    level = self.data_doc.css(".node-title h1").text
+    puts "Currently on #{level}"
   end
 
   def getinfo
@@ -42,19 +52,16 @@ attr_accessor :data_doc, :url, :info_page
           info_handeler(info_page[input.to_i])
           getinfo
         elsif input == 'x' || input == 'X'
-          Bugguide::CLI.return.list_options
+          Bugguide::CLI.return(self.url).list_options
         else
           puts "Invalid input. Press 'X' to return."
           getinfo
         end
       end
-  #    Bugguide::CLI.list_options
     end
 
     def info_handeler(info)
-    #  binding.pry
        puts "#{info.css(".bgpage-section-heading").text}:"
-     #  binding.pry
        if info.css(".bgpage-taxon").text != ""
          taxon_title = info.css(".bgpage-taxon-title")
          taxon_desc = info.css(".bgpage-taxon-desc")
@@ -78,24 +85,67 @@ attr_accessor :data_doc, :url, :info_page
        puts ""
      end
 
-     def travel_map
+     def travel_map_down
        paths = []
        pages = []
-       scrape = Bugguide::Scraper.current_doc.data_doc
-       pages << current_doc.url
+       scrape = self.data_doc
+       pages << self.url
        scrape.css(".pager a").each do |node|
-         pages << node.attribute('href').value
+         if !pages.include?(node.attribute('href').value)
+           pages << node.attribute('href').value
+         end
        end
-       pages.uniq.each do |page|
-         option = Bugguide::Scraper.scrape_page(page)
-         option.css(".node-title a").each do |node|
+       pages.each do |page|
+         option = Bugguide::Scraper.find_or_create_page(page)
+         option.data_doc.css(".node-title a").each do |node|
          paths << {
            :page_title => node.text,
            :page_url => node.attribute('href').value
            }
          end
        end
-       travel_down(paths)
+       travel(paths)
       end
 
+
+      def travel_map_up
+          paths = []
+          scrape = self.data_doc
+          scrape.css(".bgpage-roots a").each do |node|
+            if !paths.include?(node.attribute('href').value) && node.attribute('href').value != "https://bugguide.net/" && node.attribute('href').value != self.url
+              paths << {
+                :page_title => node.text,
+                :page_url => node.attribute('href').value
+                }
+            end
+          end
+          travel(paths)
+      end
+
+
+      def travel(paths)
+        if paths.length == 0 && self.url == @@root
+          puts "You are on the Top Level."
+        Bugguide::CLI.return(self.url).list_options
+        elsif paths.length == 0 && self.url != @@root
+          puts "You have reached the bottom level."
+          Bugguide::CLI.return(self.url).list_options
+        else
+          paths.each_with_index do |path, index|
+            if ((self == @@all[0][self.url]) && (index < 4)) || (self != @@all[0][self.url])
+              puts " #{index+1} : #{path[:page_title]}"
+              end
+          end
+          input = gets.strip
+          if input == 'x' || input == 'X'
+            Bugguide::CLI.return(self.url).list_options
+          elsif input.to_i > 0 && input.to_i <= paths.length
+            choice = input.to_i - 1
+            Bugguide::CLI.return(paths[choice][:page_url]).list_options
+          else
+            puts "Invalid input. Press 'X' to return to the main menu."
+            travel(paths)
+          end
+        end
+      end
 end
