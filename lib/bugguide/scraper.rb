@@ -1,7 +1,6 @@
 class Bugguide::Scraper
 
 @@all = []
-@@root = "https://bugguide.net/node/view/3/bgpage"
 
 attr_accessor :data_doc, :url, :info_page
 
@@ -124,10 +123,11 @@ attr_accessor :data_doc, :url, :info_page
 
 
       def travel(paths)
-        if paths.length == 0 && self.url == @@root
+        root = "https://bugguide.net/node/view/3/bgpage"
+        if paths.length == 0 && self.url == root
           puts "You are on the Top Level."
         Bugguide::CLI.return(self.url).list_options
-        elsif paths.length == 0 && self.url != @@root
+        elsif paths.length == 0 && self.url != root
           puts "You have reached the bottom level."
           Bugguide::CLI.return(self.url).list_options
         else
@@ -148,4 +148,5 @@ attr_accessor :data_doc, :url, :info_page
           end
         end
       end
+
 end
