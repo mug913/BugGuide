@@ -1,35 +1,7 @@
 class Bugguide::Scraper
 
-@@all = []
-
-attr_accessor :data_doc, :url, :info_page
-
-  def initialize(url)
-    @url = url
-    @data_doc = Nokogiri::HTML(open(url))
-    info_url = url.chomp("/bgpage")
-    @info_page = Nokogiri::HTML(open(info_url))
-    if !@@all.any?{|cell| cell[self.url]}
-      @@all << {self.url => self}
-    end
-  end
-
-  def self.find_or_create_page(url)
-      if !@@all.any?{|cell| cell[url]}
-        Bugguide::Scraper.new(url)
-      else
-        found = @@all.find{|cell| cell[url]}
-        found[url]
-      end
-    end
-
-  def self.scraped_docs
-    @@all
-  end
-
-  def current_level
-    level = self.data_doc.css(".node-title h1").text
-    puts "Currently on #{level}"
+  def self.scrape(url)
+    Nokogiri::HTML(open(url))
   end
 
   def getinfo
@@ -84,69 +56,44 @@ attr_accessor :data_doc, :url, :info_page
        puts ""
      end
 
-     def travel_map_down
+     def self.map_children(parent)
        paths = []
        pages = []
-       scrape = self.data_doc
-       pages << self.url
+       scrape = parent.data_doc
+       pages << parent.url
        scrape.css(".pager a").each do |node|
          if !pages.include?(node.attribute('href').value)
            pages << node.attribute('href').value
          end
        end
        pages.each do |page|
-         option = Bugguide::Scraper.find_or_create_page(page)
-         option.data_doc.css(".node-title a").each do |node|
+          option = scrape(page)
+          option.css(".node-title a").each do |node|
          paths << {
            :page_title => node.text,
            :page_url => node.attribute('href').value
            }
          end
        end
-       travel(paths)
+       if parent.url == "https://bugguide.net/node/view/3/bgpage"
+         paths.pop(17)
+       end
+       paths
       end
 
-
-      def travel_map_up
-          paths = []
-          scrape = self.data_doc
-          scrape.css(".bgpage-roots a").each do |node|
-            if !paths.include?(node.attribute('href').value) && node.attribute('href').value != "https://bugguide.net/" && node.attribute('href').value != self.url
-              paths << {
-                :page_title => node.text,
-                :page_url => node.attribute('href').value
-                }
-            end
-          end
-          travel(paths)
-      end
-
-
-      def travel(paths)
-        root = "https://bugguide.net/node/view/3/bgpage"
-        if paths.length == 0 && self.url == root
-          puts "You are on the Top Level."
-        Bugguide::CLI.return(self.url).list_options
-        elsif paths.length == 0 && self.url != root
-          puts "You have reached the bottom level."
-          Bugguide::CLI.return(self.url).list_options
-        else
-          paths.each_with_index do |path, index|
-            if ((self == @@all[0][self.url]) && (index < 4)) || (self != @@all[0][self.url])
-              puts " #{index+1} : #{path[:page_title]}"
-              end
-          end
-          input = gets.strip
-          if input == 'x' || input == 'X'
-            Bugguide::CLI.return(self.url).list_options
-          elsif input.to_i > 0 && input.to_i <= paths.length
-            choice = input.to_i - 1
-            Bugguide::CLI.return(paths[choice][:page_url]).list_options
-          else
-            puts "Invalid input. Press 'X' to return to the main menu."
-            travel(paths)
+      def self.back_path(page)
+        paths = []
+        scrape = page.data_doc
+        scrape.css(".bgpage-roots a").each do |node|
+          if !paths.include?(node.attribute('href').value) && node.attribute('href').value != "https://bugguide.net/" && node.attribute('href').value != page.url
+            paths << {
+            :page_title => node.text,
+            :page_url => node.attribute('href').value
+            }
           end
         end
+        paths
       end
+
 
 end

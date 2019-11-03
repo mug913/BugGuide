@@ -18,7 +18,7 @@ attr_accessor :url, :page
   end
 
   def list_options
-    page = Bugguide::Scraper.find_or_create_page(self.url)
+    page = Bugguide::Taxon.find_or_create_page(self.url)
     input = nil
     page.current_level
     puts "Options:"
@@ -29,18 +29,46 @@ attr_accessor :url, :page
     input = gets.strip
     case input
       when '1'
-        page.getinfo
-        list_options
+        page.info
+  #      list_options
       when '2'
-        page.travel_map_down
+        paths = page.children
+        travel(paths)
       when '3'
-        page.travel_map_up
+        paths = Bugguide::Scraper.back_path(page)
+        travel(paths)
       when "q","Q"
         puts "Goodbye."
         exit!
       else
         puts "Invalid input."
         list_options
+    end
+  end
+
+  def travel(paths)
+    root = "https://bugguide.net/node/view/3/bgpage"
+    if paths.length == 0 && self.url == root
+      puts "You are on the Top Level."
+      list_options
+    elsif paths.length == 0 && self.url != root
+      puts "You have reached the bottom level."
+      list_options
+    else
+      paths.each_with_index do |path, index|
+        puts " #{index+1} : #{path[:page_title]}"
+      end
+    end
+    input = gets.strip
+    if input == 'x' || input == 'X'
+      list_options
+    elsif input.to_i > 0 && input.to_i <= paths.length
+      choice = input.to_i - 1
+      @@cli.url = paths[choice][:page_url]
+      list_options
+    else
+      puts "Invalid input. Press 'X' to return to the main menu."
+    travel(paths)
     end
   end
 
