@@ -10,6 +10,7 @@ $ git clone git@github.com:mug913/BugGuide.git
 Then type:
 
 $ cd bugguide
+
 Next:
 
 $ bundle install
