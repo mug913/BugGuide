@@ -3,16 +3,14 @@
 This is a simple CLI for navigating the information collected and presented at https://bugguide.net. It allows the user to travel up and down their constructed Phylum Arthropoda taxonomic tree and browse the information available at each level.
 
 Installation 
-Type:
 
+Type:
 $ git clone git@github.com:mug913/BugGuide.git
 
 Then type:
-
 $ cd bugguide
 
 Next:
-
 $ bundle install
 
 Usage
